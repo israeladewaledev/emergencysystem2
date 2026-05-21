@@ -395,6 +395,28 @@ const ResponderDashboard = ({ isNested = false }) => {
     }
   };
 
+  const handleResolveAlert = async (alertId) => {
+    try {
+      const { error } = await supabase
+        .from('emergency_alerts')
+        .update({
+          status: 'resolved',
+          resolved_at: new Date().toISOString()
+        })
+        .eq('id', alertId);
+
+      if (error) throw error;
+
+      if (activeAlert?.realId === alertId) {
+        setActiveAlert(null); // Clear detail panel on resolution
+      }
+      fetchAlerts(); // Refresh queue
+    } catch (error) {
+      console.error('Error resolving alert:', error);
+      alert('Failed to resolve: ' + error.message);
+    }
+  };
+
   const startVideoCall = async () => {
     if (!activeAlert) return;
     const roomName = `NileEmergency-${activeAlert.realId.slice(0, 8)}`;
@@ -610,10 +632,12 @@ const ResponderDashboard = ({ isNested = false }) => {
                           Arrived at Scene
                         </button>
                       ) : (
-                        <div className="px-4 py-2.5 bg-green-50 text-green-600 text-[9px] font-black uppercase tracking-widest rounded-xl border border-green-100 flex items-center gap-2">
-                          <div className="size-2 bg-green-500 rounded-full animate-pulse" />
-                          In Progress
-                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleResolveAlert(alert.realId); }}
+                          className="px-6 py-2.5 bg-green-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-700 shadow-lg shadow-green-200 active:scale-95 transition-all"
+                        >
+                          Complete Case
+                        </button>
                       )}
                     </div>
                   </motion.div>
