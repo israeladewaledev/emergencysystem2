@@ -161,7 +161,7 @@ const ResponderDashboard = ({ isNested = false }) => {
             type: payload.new.category,
             patient: profiles[payload.new.user_id]?.full_name || 'Reporter',
             score: payload.new.severity === 'Critical' ? 95 : payload.new.severity === 'High' ? 75 : 45,
-            time: new Date(payload.new.created_at).toLocaleTimeString()
+            time: new Date(new Date(payload.new.created_at).getTime() - 3600000).toLocaleTimeString()
           };
           setActiveAlert(updated);
         }
@@ -196,7 +196,7 @@ const ResponderDashboard = ({ isNested = false }) => {
           type: data.category,
           patient: pData?.full_name || 'Reporter',
           score: data.severity === 'Critical' ? 95 : data.severity === 'High' ? 75 : 45,
-          time: new Date(data.created_at).toLocaleTimeString()
+          time: new Date(new Date(data.created_at).getTime() - 3600000).toLocaleTimeString()
         };
         setActiveAlert(alertObj);
       }
@@ -282,7 +282,7 @@ const ResponderDashboard = ({ isNested = false }) => {
             eta: alert.status === 'accepted' ? 'Rendezvous in 4m' : 'Calculating...',
             location: geoLabel,
             rawLocation: { latitude: alert.latitude, longitude: alert.longitude },
-            time: new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: new Date(new Date(alert.created_at).getTime() - 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             patientData: profile,
             rawDate: alert.created_at,
             overrideBy: alert.override_by,
