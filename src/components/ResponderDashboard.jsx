@@ -163,7 +163,8 @@ const ResponderDashboard = ({ isNested = false }) => {
             type: payload.new.category,
             patient: profiles[payload.new.user_id]?.full_name || 'Reporter',
             score: payload.new.severity === 'Critical' ? 95 : payload.new.severity === 'High' ? 75 : 45,
-            time: new Date(new Date(payload.new.created_at).getTime() - 3600000).toLocaleTimeString()
+            time: new Date(new Date(payload.new.created_at).getTime() - 3600000).toLocaleTimeString(),
+            triageAnswers: payload.new.triage_answers
           };
           setActiveAlert(updated);
         }
@@ -198,7 +199,8 @@ const ResponderDashboard = ({ isNested = false }) => {
           type: data.category,
           patient: pData?.full_name || 'Reporter',
           score: data.severity === 'Critical' ? 95 : data.severity === 'High' ? 75 : 45,
-          time: new Date(new Date(data.created_at).getTime() - 3600000).toLocaleTimeString()
+          time: new Date(new Date(data.created_at).getTime() - 3600000).toLocaleTimeString(),
+          triageAnswers: data.triage_answers
         };
         setActiveAlert(alertObj);
       }
@@ -288,6 +290,7 @@ const ResponderDashboard = ({ isNested = false }) => {
             patientData: profile,
             rawDate: alert.created_at,
             overrideBy: alert.override_by,
+            triageAnswers: alert.triage_answers,
           };
         })
       );
