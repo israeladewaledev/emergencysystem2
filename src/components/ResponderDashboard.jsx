@@ -27,6 +27,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import dynamic from 'next/dynamic';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import AdminPanel from './AdminPanel';
 
 // --- Helpers ---
@@ -420,7 +422,7 @@ const ResponderDashboard = ({ isNested = false }) => {
   const startVideoCall = async () => {
     if (!activeAlert) return;
     const roomName = `NileEmergency-${activeAlert.realId.slice(0, 8)}`;
-    const meetUrl = `https://meet.jit.si/${roomName}`;
+    const meetUrl = `https://meet.jit.si/${roomName}#config.prejoinPageEnabled=false&config.disableDeepLinking=true`;
 
     const { error } = await supabase
       .from('emergency_messages')
@@ -431,10 +433,42 @@ const ResponderDashboard = ({ isNested = false }) => {
       });
 
     if (error) {
-      console.error('Error starting video call:', error.message);
+      alert('Failed to initiate video session.');
     } else {
       window.open(meetUrl, '_blank');
     }
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add Header
+    doc.setFontSize(22);
+    doc.text("Nile Health Emergency Response - Incident Report", 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+    
+    // table data
+    const tableRows = historyAlerts.map(alert => [
+      alert.id,
+      alert.patient,
+      alert.type,
+      alert.severity,
+      alert.location,
+      new Date(alert.rawDate).toLocaleDateString(),
+      alert.status
+    ]);
+
+    autoTable(doc, {
+      head: [['ID', 'Patient', 'Category', 'Severity', 'Location', 'Date', 'Status']],
+      body: tableRows,
+      startY: 35,
+      styles: { fontSize: 8 },
+      headStyles: { fillStyle: '#e4423a' }
+    });
+
+    doc.save(`incident-report-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const handleLogout = async () => {
@@ -825,7 +859,12 @@ const ResponderDashboard = ({ isNested = false }) => {
                 <div className="flex items-center justify-between">
                   <h2 className="text-3xl font-black text-gray-900 tracking-tight">Incident Logs</h2>
                   <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm">Export PDF</button>
+                    <button 
+                      onClick={handleExportPDF}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-gray-50 transition-all"
+                    >
+                      Export PDF
+                    </button>
                     <button className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm">Filters</button>
                   </div>
                 </div>
