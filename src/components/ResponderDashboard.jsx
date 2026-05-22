@@ -422,7 +422,8 @@ const ResponderDashboard = ({ isNested = false }) => {
   const startVideoCall = async () => {
     if (!activeAlert) return;
     const roomName = `NileEmergency-${activeAlert.realId.slice(0, 8)}`;
-    const meetUrl = `https://meet.jit.si/${roomName}#config.prejoinPageEnabled=false&config.disableDeepLinking=true`;
+    // Using meet.ffmuc.net as it is more permissive and web-friendly for mobile
+    const meetUrl = `https://meet.ffmuc.net/${roomName}#config.prejoinPageEnabled=false&config.disableDeepLinking=true&interfaceConfig.SHOW_JITSI_WATERMARK=false&interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false`;
 
     const { error } = await supabase
       .from('emergency_messages')
