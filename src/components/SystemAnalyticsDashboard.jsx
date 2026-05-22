@@ -21,7 +21,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance' }) => {
   const [currentView, setCurrentView] = useState(initialView);
@@ -134,7 +134,7 @@ const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance
     setLoading(false);
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = (singleAlert = null) => {
     const doc = new jsPDF();
     
     // Add Header
@@ -144,9 +144,12 @@ const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
     
+    // Determine data to export
+    const dataToExport = singleAlert ? [singleAlert] : alerts;
+
     // Add Table
     const tableColumn = ["Date", "Time", "Reporter", "Category", "Severity", "Location", "Status"];
-    const tableRows = alerts.map(alert => [
+    const tableRows = dataToExport.map(alert => [
       new Date(alert.created_at).toLocaleDateString(),
       new Date(alert.created_at).toLocaleTimeString(),
       profiles[alert.user_id]?.full_name || 'Anonymous',
@@ -156,7 +159,7 @@ const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance
       (alert.status || 'pending').toUpperCase()
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 35,
@@ -165,7 +168,11 @@ const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance
       styles: { fontSize: 8 },
     });
 
-    doc.save(`Nile_Emergency_Log_${new Date().toISOString().slice(0,10)}.pdf`);
+    const fileName = singleAlert 
+      ? `Nile_Incident_${singleAlert.id.slice(0,8)}_${new Date().toISOString().slice(0,10)}.pdf`
+      : `Nile_Emergency_Log_Full_${new Date().toISOString().slice(0,10)}.pdf`;
+
+    doc.save(fileName);
   };
 
   const renderContent = () => {
@@ -234,7 +241,16 @@ const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance
                       <td className="px-10 py-5 font-mono text-xs font-bold text-gray-500">{new Date(alert.created_at).toLocaleDateString()}</td>
                       <td className="px-10 py-5 font-black text-sm">{profiles[alert.user_id]?.full_name || 'Anonymous'}</td>
                       <td className="px-10 py-5 text-center"><span className="text-xs font-bold px-3 py-1 bg-gray-100 rounded-lg">{alert.category}</span></td>
-                      <td className="px-10 py-5 text-right font-black text-[10px] uppercase text-green-600">{alert.status || 'pending'}</td>
+                      <td className="px-10 py-5 text-right flex items-center justify-end gap-4 overflow-visible">
+                        <span className="font-black text-[10px] uppercase text-green-600">{alert.status || 'pending'}</span>
+                        <button 
+                          onClick={() => exportToPDF(alert)}
+                          className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-[#e4423a] transition-all"
+                          title="Download Report"
+                        >
+                          <ArrowDown size={14} className="rotate-180" />
+                        </button>
+                      </td>
                     </tr>
                   )) : (
                     <tr>

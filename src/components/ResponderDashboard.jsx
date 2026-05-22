@@ -440,7 +440,7 @@ const ResponderDashboard = ({ isNested = false }) => {
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = (singleAlert = null) => {
     const doc = new jsPDF();
     
     // Add Header
@@ -450,8 +450,13 @@ const ResponderDashboard = ({ isNested = false }) => {
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
     
+    // Determine data to export
+    const dataToExport = singleAlert 
+      ? [singleAlert] 
+      : historyAlerts;
+
     // table data
-    const tableRows = historyAlerts.map(alert => [
+    const tableRows = dataToExport.map(alert => [
       alert.id,
       alert.patient,
       alert.type,
@@ -469,7 +474,11 @@ const ResponderDashboard = ({ isNested = false }) => {
       headStyles: { fillStyle: '#e4423a' }
     });
 
-    doc.save(`incident-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    const fileName = singleAlert 
+      ? `incident-report-${singleAlert.id.slice(0, 8)}.pdf`
+      : `incident-report-full-${new Date().toISOString().split('T')[0]}.pdf`;
+
+    doc.save(fileName);
   };
 
   const handleLogout = async () => {
@@ -887,7 +896,16 @@ const ResponderDashboard = ({ isNested = false }) => {
                           <p className="text-xs font-black text-gray-900 mb-1">{new Date(alert.rawDate).toLocaleDateString()}</p>
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{alert.time}</p>
                         </div>
-                        <ChevronRight className="text-gray-300" />
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleExportPDF(alert); }}
+                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-[#e4423a] transition-all"
+                            title="Download Report"
+                          >
+                            <ArrowDown size={18} className="rotate-180" />
+                          </button>
+                          <ChevronRight className="text-gray-300" />
+                        </div>
                       </div>
                     </div>
                   ))}
