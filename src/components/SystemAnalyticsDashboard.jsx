@@ -156,16 +156,18 @@ const SystemAnalyticsDashboard = ({ isNested = false, initialView = 'performance
       alert.category || 'N/A',
       alert.severity || 'N/A',
       alert.location || 'Nile Campus',
-      (alert.status || 'pending').toUpperCase()
+      (alert.status || 'pending').toUpperCase(),
+      alert.triage_answers ? Object.entries(alert.triage_answers).map(([k, v]) => `${k}: ${v}`).join('; ') : 'N/A'
     ]);
 
     autoTable(doc, {
-      head: [tableColumn],
+      head: [["Date", "Time", "Reporter", "Category", "Severity", "Location", "Status", "Triage"]],
       body: tableRows,
       startY: 35,
       theme: 'grid',
       headStyles: { fillColor: [228, 66, 58], textColor: [255, 255, 255] },
-      styles: { fontSize: 8 },
+      styles: { fontSize: 7 },
+      columnStyles: { 7: { cellWidth: 40 } }
     });
 
     const fileName = singleAlert 

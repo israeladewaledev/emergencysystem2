@@ -463,14 +463,17 @@ const ResponderDashboard = ({ isNested = false }) => {
       alert.severity,
       alert.location,
       new Date(alert.rawDate).toLocaleDateString(),
-      alert.status
+      alert.status,
+      // Add triage info to body for PDF
+      alert.triageAnswers ? Object.entries(alert.triageAnswers).map(([k, v]) => `${k}: ${v}`).join('\n') : 'N/A'
     ]);
 
     autoTable(doc, {
-      head: [['ID', 'Patient', 'Category', 'Severity', 'Location', 'Date', 'Status']],
+      head: [['ID', 'Patient', 'Category', 'Severity', 'Location', 'Date', 'Status', 'Triage Notes']],
       body: tableRows,
       startY: 35,
-      styles: { fontSize: 8 },
+      styles: { fontSize: 7, cellPadding: 2 },
+      columnStyles: { 7: { cellWidth: 50 } }, // Give more room for triage notes
       headStyles: { fillStyle: '#e4423a' }
     });
 
@@ -774,6 +777,26 @@ const ResponderDashboard = ({ isNested = false }) => {
                           <span className="text-sm font-bold tracking-tight">Allergies: {activeAlert.patientData?.allergies || 'No known allergies'}</span>
                         </div>
                       </div>
+
+                      {/* Triage Summary */}
+                      {activeAlert.triageAnswers && (
+                        <div className="bg-white rounded-3xl border border-blue-50 p-8 mb-10 shadow-sm">
+                          <h5 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-6">Patient Triage Response</h5>
+                          <div className="space-y-6">
+                            {Object.entries(activeAlert.triageAnswers).map(([question, answer], idx) => (
+                              <div key={idx} className="flex gap-4">
+                                <div className="size-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">
+                                  {idx + 1}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-gray-400 mb-1">{question}</p>
+                                  <p className="text-sm font-black text-gray-900 leading-tight">{answer}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* AI Triage Override */}
                       <div className="bg-orange-50 rounded-3xl border border-orange-100 p-6 mb-6">
