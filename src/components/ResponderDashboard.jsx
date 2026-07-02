@@ -116,11 +116,14 @@ const ResponderDashboard = ({ isNested = false }) => {
   const [overriding, setOverriding] = useState(false);
   const [userRole, setUserRole] = useState('responder');
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   
   const messagesEndRef = React.useRef(null);
   const sirenRef = React.useRef(null);
-  const audioEnabledRef = React.useRef(false);
+  const audioEnabledRef = React.useRef(true);
+  const audioUnlockedRef = React.useRef(false);
+  const pendingAlarmRef = React.useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -131,11 +134,11 @@ const ResponderDashboard = ({ isNested = false }) => {
   }, [messages]);
 
   useEffect(() => {
-    // Load audio preference and setup siren
-    const savedAudio = localStorage.getItem('admin_audio_enabled');
-    if (savedAudio === 'true') {
-      setAudioEnabled(true);
-      audioEnabledRef.current = true;
+    // Setup siren - alarm is ON by default, user can mute
+    const savedMuted = localStorage.getItem('admin_audio_muted');
+    if (savedMuted === 'true') {
+      setAudioEnabled(false);
+      audioEnabledRef.current = false;
     }
 
     const siren = new Audio("/siren.mp3");
@@ -143,6 +146,23 @@ const ResponderDashboard = ({ isNested = false }) => {
     siren.volume = 1.0;
     siren.loop = false;
     sirenRef.current = siren;
+
+    // Unlock audio on first user interaction anywhere in the page
+    const unlockAudio = () => {
+      if (!audioUnlockedRef.current) {
+        audioUnlockedRef.current = true;
+        setAudioUnlocked(true);
+        // If a new alert came in before unlock, play it now
+        if (pendingAlarmRef.current && audioEnabledRef.current) {
+          pendingAlarmRef.current = false;
+          siren.play()
+            .then(() => setTimeout(() => { siren.pause(); siren.currentTime = 0; }, 6000))
+            .catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
 
     registerSW();
     fetchUserRole();
@@ -164,16 +184,22 @@ const ResponderDashboard = ({ isNested = false }) => {
 
           // Play audio siren alarm if enabled
           if (audioEnabledRef.current && sirenRef.current) {
-            sirenRef.current.play()
-              .then(() => {
-                setTimeout(() => {
-                  if (sirenRef.current) {
-                    sirenRef.current.pause();
-                    sirenRef.current.currentTime = 0;
-                  }
-                }, 6000); // Auto mute after 6s
-              })
-              .catch(e => console.log("Audio play blocked by browser", e));
+            if (audioUnlockedRef.current) {
+              // Audio already unlocked by user interaction - play immediately  
+              sirenRef.current.play()
+                .then(() => {
+                  setTimeout(() => {
+                    if (sirenRef.current) {
+                      sirenRef.current.pause();
+                      sirenRef.current.currentTime = 0;
+                    }
+                  }, 6000);
+                })
+                .catch(e => console.log("Audio play error", e));
+            } else {
+              // Queue the alarm to play once user interacts
+              pendingAlarmRef.current = true;
+            }
           }
         }
 
@@ -251,20 +277,16 @@ const ResponderDashboard = ({ isNested = false }) => {
     const newState = !audioEnabled;
     setAudioEnabled(newState);
     audioEnabledRef.current = newState;
-    localStorage.setItem('admin_audio_enabled', newState.toString());
+    // Save muted state (inverted - we save when muted)
+    localStorage.setItem('admin_audio_muted', (!newState).toString());
 
-    // Play a brief 1s blip to unlock browser audio restrictions on toggle on
-    if (newState && sirenRef.current) {
+    // When UNmuting, play a brief test blip so user knows it's working
+    if (newState && sirenRef.current && audioUnlockedRef.current) {
       sirenRef.current.play()
-        .then(() => {
-          setTimeout(() => {
-            if (sirenRef.current) {
-              sirenRef.current.pause();
-              sirenRef.current.currentTime = 0;
-            }
-          }, 1000);
-        })
-        .catch(e => console.log("Audio test blocked", e));
+        .then(() => setTimeout(() => {
+          if (sirenRef.current) { sirenRef.current.pause(); sirenRef.current.currentTime = 0; }
+        }, 800))
+        .catch(() => {});
     }
   };
 
@@ -652,15 +674,23 @@ const ResponderDashboard = ({ isNested = false }) => {
             <h2 className="font-black text-sm uppercase tracking-widest text-gray-500">Live Command Center</h2>
           </div>
           <div className="flex items-center gap-6">
-            {/* Siren alarm toggle */}
-            <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-              <span className="text-[10px] font-black text-gray-400 uppercase">Siren Alarm</span>
-              <div
-                onClick={toggleAudio}
-                className={`w-12 h-6 rounded-full cursor-pointer transition-all p-1 flex items-center ${audioEnabled ? 'bg-[#e4423a] justify-end' : 'bg-gray-300 justify-start'}`}>
-                <div className="size-4 bg-white rounded-full shadow-sm" />
-              </div>
-            </div>
+            {/* Alarm mute/unmute button */}
+            <button
+              onClick={toggleAudio}
+              title={audioEnabled ? 'Mute Siren Alarm' : 'Unmute Siren Alarm'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all font-black text-[10px] uppercase tracking-widest ${
+                audioEnabled
+                  ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                  : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+              }`}
+            >
+              {audioEnabled ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m10.68 5.7 8.64 14.96"/><path d="M6 8v4a6 6 0 0 0 9 5.2"/><path d="M18 15v3"/><path d="M12 19v3"/><path d="M6.35 6.35 2 2"/></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              )}
+              {audioEnabled ? 'Mute' : 'Unmuted — Alarm Off'}
+            </button>
 
             <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
               <span className="text-[10px] font-black text-gray-400 uppercase">Duty Status</span>
