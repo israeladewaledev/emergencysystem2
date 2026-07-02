@@ -116,7 +116,11 @@ const ResponderDashboard = ({ isNested = false }) => {
   const [overriding, setOverriding] = useState(false);
   const [userRole, setUserRole] = useState('responder');
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  
   const messagesEndRef = React.useRef(null);
+  const sirenRef = React.useRef(null);
+  const audioEnabledRef = React.useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -127,6 +131,19 @@ const ResponderDashboard = ({ isNested = false }) => {
   }, [messages]);
 
   useEffect(() => {
+    // Load audio preference and setup siren
+    const savedAudio = localStorage.getItem('admin_audio_enabled');
+    if (savedAudio === 'true') {
+      setAudioEnabled(true);
+      audioEnabledRef.current = true;
+    }
+
+    const siren = new Audio("/siren.mp3");
+    siren.preload = "auto";
+    siren.volume = 1.0;
+    siren.loop = false;
+    sirenRef.current = siren;
+
     registerSW();
     fetchUserRole();
     fetchAlerts();
@@ -144,6 +161,20 @@ const ResponderDashboard = ({ isNested = false }) => {
             location: payload.new.location || 'Nile Campus',
             severity: payload.new.severity || 'High',
           });
+
+          // Play audio siren alarm if enabled
+          if (audioEnabledRef.current && sirenRef.current) {
+            sirenRef.current.play()
+              .then(() => {
+                setTimeout(() => {
+                  if (sirenRef.current) {
+                    sirenRef.current.pause();
+                    sirenRef.current.currentTime = 0;
+                  }
+                }, 6000); // Auto mute after 6s
+              })
+              .catch(e => console.log("Audio play blocked by browser", e));
+          }
         }
 
         // If an update comes for our active alert, sync it
@@ -207,8 +238,35 @@ const ResponderDashboard = ({ isNested = false }) => {
     };
     checkActive();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+      if (sirenRef.current) {
+        sirenRef.current.pause();
+        sirenRef.current.currentTime = 0;
+      }
+    };
   }, []);
+
+  const toggleAudio = () => {
+    const newState = !audioEnabled;
+    setAudioEnabled(newState);
+    audioEnabledRef.current = newState;
+    localStorage.setItem('admin_audio_enabled', newState.toString());
+
+    // Play a brief 1s blip to unlock browser audio restrictions on toggle on
+    if (newState && sirenRef.current) {
+      sirenRef.current.play()
+        .then(() => {
+          setTimeout(() => {
+            if (sirenRef.current) {
+              sirenRef.current.pause();
+              sirenRef.current.currentTime = 0;
+            }
+          }, 1000);
+        })
+        .catch(e => console.log("Audio test blocked", e));
+    }
+  };
 
   useEffect(() => {
     if (activeAlert) {
@@ -594,6 +652,16 @@ const ResponderDashboard = ({ isNested = false }) => {
             <h2 className="font-black text-sm uppercase tracking-widest text-gray-500">Live Command Center</h2>
           </div>
           <div className="flex items-center gap-6">
+            {/* Siren alarm toggle */}
+            <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+              <span className="text-[10px] font-black text-gray-400 uppercase">Siren Alarm</span>
+              <div
+                onClick={toggleAudio}
+                className={`w-12 h-6 rounded-full cursor-pointer transition-all p-1 flex items-center ${audioEnabled ? 'bg-[#e4423a] justify-end' : 'bg-gray-300 justify-start'}`}>
+                <div className="size-4 bg-white rounded-full shadow-sm" />
+              </div>
+            </div>
+
             <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
               <span className="text-[10px] font-black text-gray-400 uppercase">Duty Status</span>
               <div
