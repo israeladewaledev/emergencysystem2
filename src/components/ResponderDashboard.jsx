@@ -581,7 +581,7 @@ const ResponderDashboard = ({ isNested = false }) => {
   const historyAlerts = alerts.filter(a => a.status === 'resolved' || a.status === 'cancelled');
 
   return (
-    <div className="flex h-screen bg-[#f5f5f5] text-[#171211]">
+    <div className={`flex bg-[#f5f5f5] text-[#171211] ${isNested ? 'h-full w-full' : 'h-screen'}`}>
       {/* Sidebar */}
       {!isNested && (
         <aside className="w-80 bg-white border-r border-gray-100 flex flex-col z-30 shadow-sm">
